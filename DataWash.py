@@ -1,10 +1,10 @@
 # coding:utf-8
-file = open("sms_sample.txt")
+file = open("data/TotalData.txt")
 
-LAST = True
+LAST = False
 
 if not LAST:
-    o = open("filtered_taocan_sms_sample.txt", 'w')
+    o = open("output/filtered_sms_sample.txt", 'w')
 else:
     o = open("filtered_last_sms_sample.txt", 'w')
 
@@ -18,16 +18,25 @@ while 1:
             if LAST == True:
                 continue
 
-            o.write(line[line.index("|") + 1:])
+            try:
+                o.write(line[line.index("|") + 1:])
+            except:
+                o.write(line)
             o.flush()
 
-        if "验证码" in line:
+        if "验证码" in line or "校验码" in line or "动态密码" in line:
             if LAST == True:
                 continue
             o.write(line)
             o.flush()
 
-        if "动态密码" in line:
+        if "火车" in line or "飞机" in line or "航班" in line:
+            if LAST == True:
+                continue
+            o.write(line)
+            o.flush()
+
+        if "水力" in line or "电力" in line or "水费" in line or "电费" in line or "用水量" in line or "用电量" in line:
             if LAST == True:
                 continue
             o.write(line)

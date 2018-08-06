@@ -1,9 +1,12 @@
 # coding:utf-8
-f = open("result.txt")
+f = open("output/result.txt")
 
-target_list = ["B-1", "B-2", "B-3", "B-4", "B-5", "B-6", "B-7", "B-8"]
-middle_list = ["I-1", "I-2", "I-3", "I-4", "I-5", "I-6", "B-7", "B-8"]
-explain_list = ["截止时间", "国内通用流量", "省内剩余流量", "套餐外流量剩余", "国内剩余流量", "已使用移动数据流量", "套餐内流量剩余", "验证码"]
+target_list = ["B-1", "B-2", "B-3", "B-4", "B-5", "B-6", "B-7", "B-8", "B-9", "B-10", "B-11", "B-12", "B-13", "B-14",
+               "B-15", "B-16", "B-17"]
+middle_list = ["I-1", "I-2", "I-3", "I-4", "I-5", "I-6", "B-7", "B-8", "B-9", "B-10", "B-11", "B-12", "B-13", "B-14",
+               "B-15", "B-16", "B-17"]
+explain_list = ["截止时间", "国内通用流量", "省内剩余流量", "套餐外流量剩余", "国内剩余流量", "已使用移动数据流量", "套餐内流量剩余", "验证码", "转账金额", "尾号", "支出",
+                "当前余额", '存入', '订单号', '出发地', '目的地', '出发时间']
 sign = []
 for x in target_list:
     sign.append(0)
@@ -24,13 +27,16 @@ while 1:
         temp = line.split(" ")
         if line == "\n":
             for i, x in enumerate(target_list):
-                    sign[i] = 0
+                sign[i] = 0
+                if value[i] != '':
                     value_list[i].append(value[i])
-                    value[i] = ""
+                value[i] = ""
             o.write(sentence)
             o.write("\n")
             o.write("(")
             for j, l in enumerate(explain_list):
+                if len(value_list[j]) == 0:
+                    continue
                 o.write(l)
                 o.write(":")
                 for p in value_list[j]:
@@ -50,7 +56,8 @@ while 1:
                     sign[i] = 1
                 if sign[i] == 1 and temp[1] == "O\n":
                     sign[i] = 0
-                    value_list[i].append(value[i])
+                    if value[i] != '':
+                        value_list[i].append(value[i])
                     value[i] = ""
                 if sign[i] == 1:
                     value[i] += temp[0].strip()
