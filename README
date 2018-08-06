@@ -1,8 +1,6 @@
-1.使用DataWash来将场景相关的句子从原文本中抽取出来，输入为原文本文件，LAST为False时，表示抽取与场景相关的句子，
-LAST为True，是剩下的句子，对应不同的场景，该部分代码需要重写
+1.超哥在/data/Text/sms路径下放了很多的短信语料，首先要把它们整合成一个大的语料
+使用DataPreDeal.py来获取TotalData.txt(合并后的数据),运行时请新建data目录
 
-2.使用gen_train_test来对场景相关句子进行自动标注，主要使用正则表达式和人工规则
+2.复制DataWash.py为NewDataWash.py，根据自己的业务场景从语料中筛选对应的句子，不要在原DataWash.py上修改，提交时直接git add NewDataWash_姓名 即可
 
-3.模型部分训练（盛剑负责）
-
-4.DataAssemble接收模型结果作为输入，输出可视化的文本信息
+3.使用gen_train_test_total来自动标注训练语料，复制一份文件为new_train_test_total，根据自己的业务场景标注语料，大部分代码是不需要修改的，只需要重构664-1196，新的抽取函数命名为_line数字。
