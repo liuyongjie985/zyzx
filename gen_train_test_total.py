@@ -66,7 +66,6 @@ place = [u'北京', u'天津', u'上海', u'重庆', u'新疆', u'乌鲁木齐',
          u'浏阳', u'醴陵', u'湘乡', u'韶山', u'耒阳', u'常宁', u'武冈', u'临湘', u'汨罗', u'津市', u'沅江', u'资兴', u'洪江市', u'冷水江市', u'涟源市',
          u'吉首市']
 
-
 # ',u'16，【湖北】：12地级市——武汉',u'襄樊',u'宜昌',u'黄石',u'鄂州',u'随州',u'荆州',u'荆门',u'十堰',u'孝感',u'黄冈',u'咸宁
 # ',u'24县级市——大冶市',u'丹江口市',u'洪湖市',u'石首市',u'松滋市',u'宜都市',u'当阳市',u'枝江市',u'老河口市',u'枣阳市',u'宜城市',u'钟祥市',u'应城市',u'安陆市',u'汉川市',u'麻城市',u'武穴市',u'赤壁市',u'广水市',u'仙桃市',u'天门市',u'潜江市',u'恩施市',u'利川市
 # ',u'17，【河南】：17地级市——郑州',u'洛阳',u'开封',u'漯河',u'安阳',u'新乡',u'周口',u'三门峡',u'焦作',u'平顶山',u'信阳',u'南阳',u'鹤壁',u'濮阳',u'许昌',u'商丘',u'驻马店
@@ -626,6 +625,8 @@ place = [u'北京', u'天津', u'上海', u'重庆', u'新疆', u'乌鲁木齐',
 # ',u'镇江',u'镇江南',u'镇赉',u'镇平',u'镇西
 # ',u'镇远',u'泽普',u'治安',u'枝城',u'纸坊东',
 
+flow_re = u"([\d\.]+[MGB(MB)(GB)]){1,3}"
+
 
 # inpath = 'test'
 
@@ -722,7 +723,37 @@ class labeling():
         return re_str
 
     """
-    author: 
+    author: chenyuxiang
+            end
+    """
+
+    """
+    author: liuyongjie
+            start
+    """
+
+    def match_firstNumber(self, matched):
+        re_str = ''
+        key_value = matched.group("stream" + str(self.label))
+        word_list = [c for c in key_value]
+
+        firstrNum = re.compile("\d")
+
+        try:
+            idx = firstrNum.search(key_value).start()
+        except:
+            return key_value
+
+        re_str = ''.join(word_list[0:idx])
+        for i, c in enumerate(word_list[idx:]):
+            if i == 0:
+                re_str += '\n' + c + ' B-' + str(self.label) + '\n'
+            else:
+                re_str += c + ' I-' + str(self.label) + '\n'
+        return re_str
+
+    """
+    author: liuyongjie
             end
     """
 
@@ -1216,168 +1247,30 @@ def dealwithline(line):
         # re_str += ''.join(word_list[-1])
         return re_str
 
+    def _line600(matched):
+        re_str = ''
+        time = matched.group("stream600")
+        word_list = [c for c in time]
+
+        firstrNum = re.compile("\d")
+        try:
+            idx = firstrNum.search(time).start()
+        except:
+            return time
+
+        re_str = ''.join(word_list[0:idx])
+        for i, c in enumerate(word_list[idx:]):
+            if i == 0:
+                re_str += '\n' + c + ' B-' + '600' + '\n'
+            else:
+                re_str += c + ' I-' + '600' + '\n'
+        # re_str += ''.join(word_list[-1])
+        return re_str
+
     '''
     author: jsheng
     start 
     '''
-
-    def _line301(matched):
-        re_str = ''
-        time = matched.group("stream301")
-        word_list = [c for c in time]
-        re_str = ''.join(word_list[0:2])
-        for i, c in enumerate(word_list[2:]):
-            if i == 0:
-                re_str += u'\n' + c + u' B-301\n'
-            else:
-                re_str += c + u' I-301\n'
-        # re_str += ''.join(word_list[-1])
-        return re_str
-
-    def _line302(matched):
-        re_str = ''
-        time = matched.group("stream302")
-
-        word_list = [c for c in time]
-
-        re_str = ''
-        for i, c in enumerate(word_list):
-
-            if i == 0:
-                re_str += '\n' + c + ' B-' + '302' + '\n'
-            else:
-                re_str += c + ' I-' + '302' + '\n'
-        # re_str += ''.join(word_list[-1])
-        return re_str
-
-    # 您尾号
-    def _line303(matched):
-        re_str = ''
-        time = matched.group("stream303")
-        word_list = [c for c in time]
-
-        firstrNum = re.compile("\d")
-
-        idx = firstrNum.search(time).start()
-
-        re_str = ''.join(word_list[:idx])
-        for i, c in enumerate(word_list[idx:]):
-            if i == 0:
-                re_str += u'\n' + c + u' B-' + u'303' + u'\n'
-            else:
-                re_str += c + u' I-' + u'303' + u'\n'
-        # re_str += ''.join(word_list[-1])
-        return re_str
-
-    # 取款金额
-    def _line304(matched):
-        re_str = ''
-        time = matched.group("stream11")
-        word_list = [c for c in time]
-        firstrNum = re.compile("\d")
-
-        idx = firstrNum.search(time).start()
-
-        re_str = ''.join(word_list[0:idx])
-        for i, c in enumerate(word_list[idx:]):
-            if i == 0:
-                re_str += '\n' + c + ' B-' + '304' + '\n'
-            else:
-                re_str += c + ' I-' + '304' + '\n'
-        # re_str += ''.join(word_list[-1])
-        return re_str
-
-    # 支付金额
-    def _line305(matched):
-        re_str = ''
-        time = matched.group("stream11")
-        word_list = [c for c in time]
-        firstrNum = re.compile("\d")
-
-        idx = firstrNum.search(time).start()
-
-        re_str = ''.join(word_list[0:idx])
-        for i, c in enumerate(word_list[idx:]):
-            if i == 0:
-                re_str += '\n' + c + ' B-' + '305' + '\n'
-            else:
-                re_str += c + ' I-' + '305' + '\n'
-        # re_str += ''.join(word_list[-1])
-        return re_str
-
-    # 余额
-    def _line306(matched):
-        re_str = ''
-        time = matched.group("stream306")
-        word_list = [c for c in time]
-        firstrNum = re.compile("\d")
-
-        idx = firstrNum.search(time).start()
-        re_str = ''.join(word_list[0:idx])
-        for i, c in enumerate(word_list[idx:]):
-            if i == 0:
-                re_str += '\n' + c + ' B-' + '306' + '\n'
-            else:
-                re_str += c + ' I-' + '306' + '\n'
-        # re_str += ''.join(word_list[-1])
-        return re_str
-
-    # 存入/转入
-    def _line307(matched):
-        re_str = ''
-        time = matched.group("stream307")
-        word_list = [c for c in time]
-
-        firstrNum = re.compile("\d")
-
-        result = firstrNum.search(time)
-        if result == None:
-            return time
-        idx = result.start()
-
-        re_str = ''.join(word_list[0:idx])
-        for i, c in enumerate(word_list[idx:]):
-            if i == 0:
-                re_str += '\n' + c + ' B-' + '307' + '\n'
-            else:
-                re_str += c + ' I-' + '307' + '\n'
-        # re_str += ''.join(word_list[-1])
-        return re_str
-
-    def _line308(matched):
-        re_str = ''
-        time = matched.group("stream308")
-        word_list = [c for c in time]
-
-        firstrNum = re.compile("\d")
-
-        idx = firstrNum.search(time).start()
-
-        re_str = ''.join(word_list[0:idx])
-        deal = word_list[idx:]
-        if len(deal) < 8:
-            return time
-        for i, c in enumerate(word_list[idx:]):
-            if i == 0:
-                re_str += '\n' + c + ' B-' + '308' + '\n'
-            else:
-                re_str += c + ' I-' + '308' + '\n'
-        # re_str += ''.join(word_list[-1])
-        return re_str
-
-    def _line311(matched):
-        re_str = ''
-        time = matched.group("stream311")
-        word_list = [c for c in time]
-
-        re_str = ''
-        for i, c in enumerate(word_list):
-            if i == 0:
-                re_str += '\n' + c + ' B-' + '311' + '\n'
-            else:
-                re_str += c + ' I-' + '311' + '\n'
-        # re_str += ''.join(word_list[-1])
-        return re_str
 
     def _line312(matched):
         re_str = ''
@@ -1529,11 +1422,16 @@ def dealwithline(line):
     # 312: 还款日
     # 313: 已还金额
 
+    # 积分
+
     # 银行类
-    if "10085" not in line:
+    if u"10085" not in line:
         line = re.sub(ur"(?P<stream9>转账[\d\.]+)", _line1, line.strip())
         line = re.sub(ur"(?P<stream9>金额[\d\.]+)", _line1, line.strip())
         line = re.sub(ur"(?P<stream9>转出[\d\.]+)", _line1, line.strip())
+
+    if u"银行" in line:
+        line = re.sub(ur"(?P<stream600>[(交易)(消费)].{,2}金额为?-?[\d\.]+)", _line600, line.strip())
 
     line = re.sub(ur"(?P<stream405>(\d{4,4}年)(\d{1,2}月)(\d{1,2}日)?(\d{2,2}时)?(\d{2,2}分)?(\d{2,2}\:\d{2,2})?)", _line405,
                   line.strip())
@@ -1621,10 +1519,18 @@ def dealwithline(line):
     author: jsheng
     end 
     '''
+    """
+    author: liuyongjie
+    start
+    """
 
+    # 积分类
+    line = re.sub(ur"(?P<stream602>总积分为?[\d\.]+)", labeling(602).match_firstNumber, line.strip())
+    line = re.sub(ur"(?P<stream601>增加积分[\d\.]+)", labeling(601).match_firstNumber, line.strip())
     # 流量类
     line = re.sub(ur"(?P<time>截[至止](\d{4,4}年)?(\d{1,2}月)(\d{1,2}日)?(\d{2,2}时)?(\d{2,2}分)?)", _line7, line.strip())
     line = re.sub(ur"(?P<stream1>国内通用流量共([\d\.]+[MG]{0,1}B{0,1}){1,3})", _line8, line.strip())
+
     line = re.sub(ur"(?P<stream2>省内流量剩余([\d\.]+[MG]{0,1}B{0,1}){1,3})", _line9, line.strip())
     line = re.sub(ur"(?P<stream3>套餐外流量为([\d\.]+[MG]{0,1}B{0,1}){1,3})", _line10, line.strip())
     line = re.sub(ur"(?P<stream4>国内流量剩余([\d\.]+[MG]{0,1}B{0,1}){1,3})", _line11, line.strip())
@@ -1636,7 +1542,8 @@ def dealwithline(line):
     line = re.sub(ur"(?P<stream402>已使?用(流量)?数?[\d\.]+([MGB(MB)(GB)]){1,3})", _line402, line.strip())
 
     line = re.sub(ur"(?P<stream401>本月.{,6}流量共([\d\.]+[MG]{0,1}B{0,1}){1,3})", _line401, line.strip())
-    line = re.sub(ur"(?P<stream401>流量共有[\d\.]+([MGB(MB)(GB)]){1,3})", _line401, line.strip())
+    line = re.sub(ur"(?P<stream401>流量共有([\d\.]+[MGB(MB)(GB)]){1,3})", _line401, line.strip())
+    line = re.sub(ur"(?P<stream467>流量包.{,2}共?" + flow_re + ur")", labeling(467).match_firstNumber, line.strip())
 
     line = re.sub(ur"(?P<stream403>套餐内(流量)?使用.+?([\d\.]+[MG]{0,1}B{0,1}){1,3})", _line403, line.strip())
     line = re.sub(ur"(?P<stream404>套餐外(流量)?使用.+?([\d\.]+[MG]{0,1}B{0,1}){1,3})", _line404, line.strip())
@@ -1649,6 +1556,11 @@ def dealwithline(line):
     line = re.sub(ur"(?P<stream22>用水量[\d\.]+)", _line28, line.strip())
     if u'电话' not in line and u'户' in line and (u"电费" in line or u"用电量" in line or u"水费" in line or u"用水量" in line):
         line = re.sub(ur"(?P<stream23>[\d\.]+)", _line29, line.strip())
+
+    """
+        author: liuyongjie
+                end
+    """
 
     """
     author: konglili
@@ -1677,7 +1589,7 @@ def dealwithline(line):
 
     # 交易提醒 支付金额-105 发起交易-106 退款金额-107 必配
     line = re.sub(ur"(?P<stream105>支出.*(人民币)?(:)?[\d\.]{1,})", labeling(105).match_digitnumber, line.strip())
-    line = re.sub(ur"(?P<stream106>发起交易[\d\.]{1,})", labeling(106).match_digitnumber, line.strip())
+    line = re.sub(ur"(?P<stream106>(发起)?交易.*(人民币)?-?为?[\d\.]{1,})", labeling(106).match_digitnumber, line.strip())
     line = re.sub(ur"(?P<stream107>[\d\.]{1,}元退款)", labeling(107).match_digitnumber, line.strip())
     line = re.sub(ur"(?P<stream107>退款([a-z]{1,})?([A-Z]{1,})?(金额)-?为?[\d\.]{1,})", labeling(107).match_digitnumber,
                   line.strip())
