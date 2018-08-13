@@ -25,9 +25,10 @@ for x in my_list:
 
             list = [i.start() for i in re.finditer(r'\|', line)]
             if len(list) == 2:
-                line = line[list[1] + 1:]
-                o.write(line.strip() + "#")
+                o.write(line[:list[1]] + '|' + line[list[1] + 1:].strip() + "#")
                 o.write('\n')
+            # o.write(line.strip() + "#")
+            # o.write()
     f.close()
 
 my_list = ["./data/10086短信原文.xlsx", "./data/hangye30.xlsx"]
@@ -48,23 +49,26 @@ for x in my_list:
         try:
             if len(line) == 3:
                 print line[2]
-                o.write(str(line[2]).strip() + "#")
+                o.write(str(line[1]).strip() + '|' + str(line[2]).strip() + "#")
                 o.write('\n')
 
         except:
             traceback.print_exc()
             print line[2]
-            o.write(str(line[2].encode('utf-8')).strip() + "#")
+            try:
+                o.write(str(line[1]).strip() + '|' + str(line[2].encode('utf-8')).strip() + "#")
+            except:
+                o.write(str(line[1].encode('utf-8')).strip() + '|' + str(line[2].encode('utf-8')).strip() + "#")
             o.write('\n')
         try:
             if len(line) == 2:
                 print line[1]
-                o.write(str(line[1]).strip() + "#")
+                o.write(str(line[0]).strip() + '|' + str(line[1]).strip() + "#")
                 o.write('\n')
         except:
             traceback.print_exc()
             print line[1]
-            o.write(str(line[1].encode('utf-8')).strip() + "#")
+            o.write(str(line[0].encode('utf-8')).strip() + '|' + str(line[1].encode('utf-8')).strip() + "#")
             o.write('\n')
     workbook.close()
 # 通过坐标读取值
@@ -90,7 +94,7 @@ for x in my_list:
 csv_reader = csv.reader(open("data/hn.csv"))
 for row in csv_reader:
     if len(row) == 2:
-        o.write(row[1].strip() + "#")
+        o.write(row[0].strip() + '|' + row[1].strip() + "#")
         o.write('\n')
         # print row[1]
 
