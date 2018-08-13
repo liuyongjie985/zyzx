@@ -1,6 +1,18 @@
-1.超哥在/data/Text/sms路径下放了很多的短信语料，首先要把它们整合成一个大的语料
-使用DataPreDeal.py来获取TotalData.txt(合并后的数据),运行时请新建data目录
+如何测试自己写的规则
 
-2.复制DataWash.py为NewDataWash.py，根据自己的业务场景从语料中筛选对应的句子，不要在原DataWash.py上修改，提交时直接git add NewDataWash_姓名 即可
+1.超哥在/data/Text/sms路径下放了很多的短信语料，使用DataPreDeal.py来获取TotalData.txt(合并后的数据),运行时请新建data目录,注意：整合时因为语料本身就带了一些重复的句子，所以整合生成的TotalData.txt文件也会带有重复句子，在之后的数据筛选时会去除
+目前2204:/data/Text文件夹下有一份已经生成好了的TotalData.txt，也可以直接使用该数据，第一步可跳过
 
-3.使用gen_train_test_total来自动标注训练语料，复制一份文件为new_train_test_total，根据自己的业务场景标注语料，大部分代码是不需要修改的，只需要重构664-1196，新的抽取函数命名为_line数字。
+
+2.使用DataWash来获取一些与自己业务场景相关的句子,这一步操作过后，生成的filtered_sms_sample文件已经去重了,这一步是非常有必要的，因为数据太大会导致下一步时间非常久
+
+3.使用gen_train_test_total来自动标注训练语料，源文件已经按照编写者进行分块，每个人在自己的区域进行修改即可
+
+4.使用shuffleData从第二步获取的文件中抽出一些测试样例
+
+5.使用第三步中编写好的数据对第四步产生的文件进行测试，会生成train_total.txt与test_total.txt两个标注文件
+
+6.使用DataAssemble对train_total.txt文件进行测试，结果输出为result_out，根据结果修改提升场景效果
+
+----------------------------------模型分割线----------------------------------
+7.使用第五步的输出文件作为模型的输入文件，训练模型，训练出来的模型效果与第六步测试的效果呈正相关
