@@ -3,10 +3,15 @@ import os
 import re
 import random
 
-# inpath = 'data/TotalData.txt'
+inpath = 'data/TotalData.txt'
 # inpath = 'output/filtered_sms_sample.txt'
-inpath = 'output/sampleData.txt'
+# inpath = 'output/sampleData.txt'
+# inpath = 'sample.txt'
 # inpath = 'test2'
+# inpath = 'data/TestData.txt'
+# inpath = 'data/test.txt'
+
+TEST = False
 
 place = [u'北京', u'天津', u'上海', u'重庆', u'新疆', u'乌鲁木齐', u'西藏', u'宁夏', u'内蒙古', u'广西', u'黑龙江', u'哈尔滨',
          u'大庆', u'齐齐哈尔',
@@ -626,6 +631,7 @@ place = [u'北京', u'天津', u'上海', u'重庆', u'新疆', u'乌鲁木齐',
 # ',u'镇远',u'泽普',u'治安',u'枝城',u'纸坊东',
 
 flow_re = u"([\d\.]+[MGB(MB)(GB)]){1,3}"
+money_re = ur'[\d\.,]+'
 
 
 # inpath = 'test'
@@ -636,7 +642,12 @@ def split_train_test(path):
     fout2 = open('_test.txt', 'w')
     fout3 = open('_test2.txt', 'w')
 
-    r = random.randint(0, 10)
+    if TEST == True:
+
+        r = -1
+    else:
+        r = random.randint(0, 10)
+
     with open(path) as f:
         for line in f.readlines():
             if i % 10 == r:
@@ -644,7 +655,8 @@ def split_train_test(path):
                 fout3.write(line)
             else:
                 fout1.write(line)
-                r = random.randint(0, 10)
+                if TEST == False:
+                    r = random.randint(0, 10)
             i += 1
     fout1.close()
     fout2.close()
@@ -661,6 +673,11 @@ class labeling():
     def __init__(self, label):
         self.label = label
 
+    def adjust(self, label, e):
+        self.label = label
+        self.end = e
+        return self
+
     def match_digitnumber(self, matched):
         re_str = ''
         key_value = matched.group("stream" + str(self.label))
@@ -668,7 +685,31 @@ class labeling():
 
         firstrNum = re.compile("[\d\.]{1,}")
         if firstrNum:
-            firstidx = firstrNum.search(key_value).start()
+            try:
+                firstidx = firstrNum.search(key_value).start()
+            except:
+                return key_value
+            endidx = firstrNum.search(key_value).end()
+            re_str = ''.join(word_list[0:firstidx])
+        for i, c in enumerate(word_list[firstidx:endidx]):
+            if i == 0:
+                re_str += '\n' + c + ' B-' + str(self.label) + '\n'
+            else:
+                re_str += c + ' I-' + str(self.label) + '\n'
+        re_str += ''.join(word_list[endidx:])
+        return re_str
+
+    def match_negetiveDigitNumber(self, matched):
+        re_str = ''
+        key_value = matched.group("stream" + str(self.label))
+        word_list = [c for c in key_value]
+
+        firstrNum = re.compile("[\d\.-]{1,}")
+        if firstrNum:
+            try:
+                firstidx = firstrNum.search(key_value).start()
+            except:
+                return key_value
             endidx = firstrNum.search(key_value).end()
             re_str = ''.join(word_list[0:firstidx])
         for i, c in enumerate(word_list[firstidx:endidx]):
@@ -687,7 +728,10 @@ class labeling():
         firstrNum = re.compile("[a-zA-Z0-9\-]{1,}")
 
         if firstrNum:
-            firstidx = firstrNum.search(key_value).start()
+            try:
+                firstidx = firstrNum.search(key_value).start()
+            except:
+                return key_value
             endidx = firstrNum.search(key_value).end()
             re_str = ''.join(word_list[0:firstidx])
         for i, c in enumerate(word_list[firstidx:endidx]):
@@ -703,16 +747,141 @@ class labeling():
             start
     """
 
-    def match_workword(self, matched):
+    def match_liuliang(self, matched):
+        re_str = ''
+        key_value = matched.group("stream" + str(self.label))
+        print key_value
+        word_list = [c for c in key_value]
+
+        firstrNum = re.compile(ur"[\d]{1,}")
+        if firstrNum:
+            try:
+                firstidx = firstrNum.search(key_value).start()
+            except:
+                return key_value
+            endidx = len(key_value)
+            re_str = ''.join(word_list[0:firstidx])
+        for i, c in enumerate(word_list[firstidx:endidx]):
+            if i == 0:
+                re_str += '\n' + c + ' B-' + str(self.label) + '\n'
+            else:
+                re_str += c + ' I-' + str(self.label) + '\n'
+        re_str += ''.join(word_list[endidx:])
+        return re_str
+
+    def match_ordernumber(self, matched):
         re_str = ''
         key_value = matched.group("stream" + str(self.label))
         word_list = [c for c in key_value]
 
-        firstrNum = re.compile(":")
+        firstrNum = re.compile("[a-zA-Z0-9\-]{1,}")
 
         if firstrNum:
-            firstidx = firstrNum.search(key_value).start()
+            try:
+                firstidx = firstrNum.search(key_value).start()
+            except:
+                return key_value
             endidx = firstrNum.search(key_value).end()
+            re_str = ''.join(word_list[0:firstidx])
+        for i, c in enumerate(word_list[firstidx:endidx]):
+            if i == 0:
+                re_str += '\n' + c + ' B-' + str(self.label) + '\n'
+            else:
+                re_str += c + ' I-' + str(self.label) + '\n'
+        re_str += ''.join(word_list[endidx:])
+        return re_str
+
+    def match_workword(self, matched):
+        re_str = ''
+        key_value = matched.group("stream" + str(self.label))
+        # print key_value
+        word_list = [c for c in key_value]
+
+        firstrNum = re.compile(ur"：|:|】|】")
+
+        if firstrNum:
+            try:
+                firstidx = firstrNum.search(key_value).start() + 1
+            except:
+                return key_value
+            endidx = len(key_value) - 1
+            re_str = ''.join(word_list[0:firstidx])
+        for i, c in enumerate(word_list[firstidx:endidx]):
+            if i == 0:
+                re_str += '\n' + c + ' B-' + str(self.label) + '\n'
+            else:
+                if c != ' ':
+                    re_str += c + ' I-' + str(self.label) + '\n'
+        re_str += ''.join(word_list[endidx:])
+        return re_str
+
+    def match_operword(self, matched):
+        re_str = ''
+        key_value = matched.group("stream" + str(self.label))
+        # print key_value
+        word_list = [c for c in key_value]
+
+        firstrNum = re.compile(ur";|类")
+        endstrNum = re.compile(ur"包")
+
+        if firstrNum:
+            try:
+                firstidx = firstrNum.search(key_value).start() + 1
+                endidx = endstrNum.search(key_value).end() - 1
+            except:
+                return key_value
+
+            re_str = ''.join(word_list[0:firstidx])
+        for i, c in enumerate(word_list[firstidx:endidx]):
+            if i == 0:
+                re_str += '\n' + c + ' B-' + str(self.label) + '\n'
+            else:
+                if c != ' ':
+                    re_str += c + ' I-' + str(self.label) + '\n'
+        re_str += ''.join(word_list[endidx:])
+        return re_str
+
+    def match_work_filmtime(self, matched):
+        re_str = ''
+        key_value = matched.group("stream" + str(self.label))
+        # print key_value
+        word_list = [c for c in key_value]
+
+        firstrNum = re.compile("[\d]{1,}")
+
+        if firstrNum:
+            try:
+                firstidx = firstrNum.search(key_value).start()
+            except:
+                return key_value
+            endidx = len(key_value)
+            re_str = ''.join(word_list[0:firstidx])
+        for i, c in enumerate(word_list[firstidx:endidx]):
+            if i == 0:
+                re_str += '\n' + c + ' B-' + str(self.label) + '\n'
+            else:
+                if c != ' ':
+                    re_str += c + ' I-' + str(self.label) + '\n'
+        re_str += ''.join(word_list[endidx:])
+        return re_str
+
+    def match_filmname(self, matched):
+        re_str = ''
+        key_value = matched.group("stream" + str(self.label))
+        # print key_value
+
+        word_list = [c for c in key_value]
+
+        firstrNum = re.compile(ur"《")
+        endstrNum = re.compile(ur"》")
+
+        if firstrNum:
+            try:
+                firstidx = firstrNum.search(key_value).start() + 1
+                endidx = endstrNum.search(key_value).end() - 1
+            except:
+                return key_value
+
             re_str = ''.join(word_list[0:firstidx])
         for i, c in enumerate(word_list[firstidx:endidx]):
             if i == 0:
@@ -746,6 +915,31 @@ class labeling():
 
         re_str = ''.join(word_list[0:idx])
         for i, c in enumerate(word_list[idx:]):
+            if i == 0:
+                re_str += '\n' + c + ' B-' + str(self.label) + '\n'
+            else:
+                re_str += c + ' I-' + str(self.label) + '\n'
+        return re_str
+
+    def match_firstNumberWithEnd(self, matched):
+        re_str = ''
+        key_value = matched.group("stream" + str(self.label))
+        word_list = [c for c in key_value]
+
+        firstrNum = re.compile("\d")
+
+        try:
+            idx = firstrNum.search(key_value).start()
+        except:
+            return key_value
+
+        try:
+            end = firstrNum.search(key_value).start()
+        except:
+            end = len(word_list) + 1
+
+        re_str = ''.join(word_list[0:idx])
+        for i, c in enumerate(word_list[idx:end - 1]):
             if i == 0:
                 re_str += '\n' + c + ' B-' + str(self.label) + '\n'
             else:
@@ -1430,14 +1624,23 @@ def dealwithline(line):
         line = re.sub(ur"(?P<stream9>金额[\d\.]+)", _line1, line.strip())
         line = re.sub(ur"(?P<stream9>转出[\d\.]+)", _line1, line.strip())
 
-    if u"银行" in line:
+    if u"银行" in line or u"信用卡" in line:
         line = re.sub(ur"(?P<stream600>[(交易)(消费)].{,2}金额为?-?[\d\.]+)", _line600, line.strip())
+        line = re.sub(ur"(?P<stream600>[(交易)(消费)](人民币)?为?-?[\d\.]+)", labeling(600).match_firstNumber, line.strip())
+        line = re.sub(ur"(?P<stream677>[(退款)(退货)](人民币)?为?-?[\d\.]+)", labeling(677).match_firstNumber, line.strip())
+
+    line = re.sub(ur"(?P<stream677>[(人民币)(担保金)]" + money_re + ur"元?已退)",
+                  labeling(677).adjust(677, '退').match_firstNumberWithEnd,
+                  line.strip())
 
     line = re.sub(ur"(?P<stream405>(\d{4,4}年)(\d{1,2}月)(\d{1,2}日)?(\d{2,2}时)?(\d{2,2}分)?(\d{2,2}\:\d{2,2})?)", _line405,
                   line.strip())
 
     line = re.sub(ur"(?P<stream312>还款最迟(\d{4,4}年)(\d{1,2}月)(\d{1,2}日)?(\d{2,2}时)?(\d{2,2}分)?(\d{2,2}\:\d{2,2})?)",
                   _line312, line.strip())
+
+    line = re.sub(ur"(?P<stream678>应还款?金?额?[￥＄]" + money_re + ur")",
+                  labeling(678).match_firstNumber, line.strip())
 
     line = re.sub(ur"(?P<stream10>尾号.{0,1}\d{4,4})", _line2, line.strip())
 
@@ -1446,10 +1649,13 @@ def dealwithline(line):
 
     line = re.sub(ur"(?P<stream11>付款.{0,3}\d+)", _line4, line.strip())
 
-    line = re.sub(ur"(?P<stream12>余额-?为?(人民币)?[\d\.,]{2,})", _line5, line.strip())
+    line = re.sub(ur"(?P<stream12>余额为?：?-?(人民币)?[\d\.,]{2,})", _line5, line.strip())
     line = re.sub(ur"(?P<stream12>托收[\d\.,]{2,})", _line5, line.strip())
 
-    line = re.sub(ur"(?P<stream13>存入(人民币)?[\d\.]{2,})", _line6, line.strip())
+    if u"入账" in line:
+        line = re.sub(ur"(?P<stream13>人民币[\d\.]+)", _line6, line.strip())
+
+    line = re.sub(ur"(?P<stream13>存入(人民币)?" + money_re + ur")", _line6, line.strip())
     line = re.sub(ur"(?P<stream13>存款[\d\.]{2,})", _line6, line.strip())
     line = re.sub(ur"(?P<stream13>工资[\d\.])", _line6, line.strip())
     line = re.sub(ur"(?P<stream13>转入[\d\.]+)", _line6, line.strip())
@@ -1457,8 +1663,8 @@ def dealwithline(line):
     line = re.sub(ur"(?P<stream313>成功还款[\d\.]{2,})", _line313, line.strip())
 
     # 差旅类
-
-    line = re.sub(ur"(?P<stream14>[(订单)(取票)]号?\d+)", _line20, line.strip())
+    line = re.sub(ur"(?P<stream14>(订单|取票)号?\d+)", _line20, line.strip())
+    line = re.sub(ur"(?P<stream14>(订单|取票)号?[A-Z]\d+)", labeling(14).match_ordernumber, line.strip())
 
     # 始发地与目的地
     start = -1
@@ -1536,7 +1742,7 @@ def dealwithline(line):
     line = re.sub(ur"(?P<stream4>国内流量剩余([\d\.]+[MG]{0,1}B{0,1}){1,3})", _line11, line.strip())
     line = re.sub(ur"(?P<stream5>已?使用.{,4}流量数?([\d\.]+[MGB(MB)(GB)]){1,3})", _line12, line.strip())
 
-    line = re.sub(ur"(?P<stream6>套餐内流量剩余([\d\.]+[MG]{0,1}B{0,1}){1,3})", _line13, line.strip())
+    line = re.sub(ur"(?P<stream6>套餐内流量剩余" + flow_re + ur")", _line13, line.strip())
     line = re.sub(ur"(?P<stream6>剩余(流量)?([\d\.]+[MGB(MB)(GB)]){1,3})", _line13, line.strip())
 
     line = re.sub(ur"(?P<stream402>已使?用(流量)?数?[\d\.]+([MGB(MB)(GB)]){1,3})", _line402, line.strip())
@@ -1568,11 +1774,12 @@ def dealwithline(line):
     """
 
     # 使用话费
-    line = re.sub(ur"(?P<stream111>(话费)-?为?(人民币)?(：)?-?[\d\.]{1,})", _line111,
+    line = re.sub(ur"(?P<stream111>话费-?为?(人民币)?(：)?-?[\d\.]{1,})", _line111,
                   line.strip())
 
     # 查询话费: 账户余额 必配  label-100
-    line = re.sub(ur"(?P<stream100>(账户余额|话费余额|当前余额)-?为?(人民币)?(：)?-?[\d\.]{1,})", labeling(100).match_digitnumber,
+    line = re.sub(ur"(?P<stream100>(账户余额|话费余额|当前余额|话费总额)-?为?(人民币)?(：)?-?[\d\.]{1,})",
+                  labeling(100).match_negetiveDigitNumber,
                   line.strip())
 
     # 话费余额提醒，余额状态 必配  "余额不足-101"，"欠费-102"
@@ -1583,6 +1790,7 @@ def dealwithline(line):
 
     # 账单提醒 消费金额-103 必配
     line = re.sub(ur"(?P<stream103>(本月|已)?消费(金额)?-?为?(：)?[\d\.]{1,})", labeling(103).match_digitnumber, line.strip())
+    line = re.sub(ur"(?P<stream103>(话费合计|累计消费)-?为?(：)?[\d\.]{1,})", labeling(103).match_digitnumber, line.strip())
 
     # 充值成功 缴费金额-104 必配
     line = re.sub(ur"(?P<stream104>(充值成功|充值金额|成功充值|缴费金额)-?为?[\d\.]{1,})", labeling(104).match_digitnumber, line.strip())
@@ -1595,8 +1803,9 @@ def dealwithline(line):
                   line.strip())
 
     # 团购 详单 券号-108 必配
-    line = re.sub(ur"(?P<stream108>(取票|券)号-?为?(“)?(：)?[a-zA-Z0-9\-]{1,})", labeling(108).match_ordernumber,
-                  line.strip())
+    # line = re.sub(ur"(?P<stream108>(取票|券)号-?为?(“)?(：)?[a-zA-Z0-9\-]{1,})", labeling(108).match_ordernumber,line.strip())
+    line = re.sub(ur"(?P<stream108>(取票码|券码|券号|取票号)-?为?(“)?(：)?(:)? ?[a-zA-Z0-9\-]{1,})",
+                  labeling(108).match_ordernumber, line.strip())
 
     # 生后快递 签收提醒 订单号 快件 单号 快递 - 109   派送提醒 订单号 快件 单号 快递 - 110
     if u'签收' in line or u'代收' in line:
@@ -1604,6 +1813,8 @@ def dealwithline(line):
     if u'派送' in line or u'派件' in line:
         line = re.sub(ur"(?P<stream110>(快递|快递号|快件|单号)(：)?[a-zA-Z0-9\-]{1,})", labeling(110).match_ordernumber,
                       line.strip())
+    line = re.sub(ur"(?P<stream110>(物流单号|运单号码)(是|为)?(：)?[a-zA-Z0-9\-]{1,})", labeling(110).match_ordernumber,
+                  line.strip())
 
     """
     author: konglili
@@ -1616,23 +1827,56 @@ def dealwithline(line):
     """
 
     # 包月详情
-    line = re.sub(ur"(?P<stream200>剩余流量总计([\d\.]+[MG]{0,1}B{0,1}){1,3})", labeling(200).match_digitnumber, line.strip())
-    line = re.sub(ur"(?P<stream201>WLAN剩余([\d\.]+[MG]{0,1}B{0,1}){1,3})", labeling(201).match_digitnumber, line.strip())
-    line = re.sub(ur"(?P<stream202>流量剩余([\d\.]+[MG]{0,1}B{0,1}){1,3})", labeling(202).match_digitnumber, line.strip())
-    line = re.sub(ur"(?P<stream203>语音剩余([\d]){1,})", labeling(203).match_digitnumber, line.strip())
-    line = re.sub(ur"(?P<stream211>短信剩余([\d\.]){1,})", labeling(211).match_digitnumber, line.strip())
+    line = re.sub(ur"(?P<stream200>剩余流量总计([\d\.]+[MG]{0,1}B{0,1}){1,3})", labeling(200).match_liuliang, line.strip())
+    line = re.sub(ur"(?P<stream201>WLAN剩余([\d\.]+[MG]{0,1}B{0,1}){1,3})", labeling(201).match_liuliang, line.strip())
+    line = re.sub(ur"(?P<stream202>流量剩余([\d\.]+[MG]{0,1}B{0,1}){1,3})", labeling(202).match_liuliang, line.strip())
+    line = re.sub(ur"(?P<stream202>套餐剩余流量：([\d\.]+[MG]{0,1}B{0,1}){1,3})", labeling(202).match_liuliang, line.strip())
+    line = re.sub(ur"(?P<stream202>套餐剩余流量([\d\.]+[MG]{0,1}B{0,1}){1,3})", labeling(202).match_liuliang, line.strip())
+    line = re.sub(ur"(?P<stream202>国内通用流量剩余：([\d\.]+[MG]{0,1}B{0,1}){1,3})", labeling(202).match_liuliang, line.strip())
+    line = re.sub(ur"(?P<stream202>闲时流量剩余：([\d\.]+[MG]{0,1}B{0,1}){1,3})", labeling(202).match_liuliang, line.strip())
+    line = re.sub(ur"(?P<stream202>区域流量剩余：([\d\.]+[MG]{0,1}B{0,1}){1,3})", labeling(202).match_liuliang, line.strip())
+    line = re.sub(ur"(?P<stream202>统付流量剩余：([\d\.]+[MG]{0,1}B{0,1}){1,3})", labeling(202).match_liuliang,
+                  line.strip())
+
+    line = re.sub(ur"(?P<stream203>语音剩余[\d]{1,})分钟", labeling(203).match_digitnumber, line.strip())
+    line = re.sub(ur"(?P<stream204>短信剩余([\d]){1,}条)", labeling(204).match_digitnumber, line.strip())
+    line = re.sub(ur"(?P<stream205>免费通话时长已使用[\d\.]{1,}分钟)", labeling(205).match_digitnumber, line.strip())
+    line = re.sub(ur"(?P<stream206>二、其他类.+流)", labeling(206).match_operword, line.strip())
+    line = re.sub(ur"(?P<stream206>;.{10,25}包)", labeling(206).match_operword, line.strip())
+    line = re.sub(ur"(?P<stream207>包含语音[\d]{1,}分钟，剩余)", labeling(207).match_digitnumber,
+                  line.strip())
+    line = re.sub(ur"(?P<stream208>分钟，剩余[\d]{1,}分钟;)", labeling(208).match_digitnumber,
+                  line.strip())
+
+    line = re.sub(ur"(?P<stream299>包含流量([\d\.]+[MG]{0,1}B{0,1}){1,3},剩余)", labeling(299).match_liuliang,
+                  line.strip())
+    line = re.sub(ur"(?P<stream298>,剩余([\d\.]+[MG]{0,1}B{0,1}){1,3})",
+                  labeling(298).match_liuliang,
+                  line.strip())
 
     # 已开通业务
-    line = re.sub(ur"(?P<stream204>您已开通的优惠如下：([\d\.]+[.*]+[；;。]){1,3})", labeling(204).match_workword, line.strip())
-    line = re.sub(ur"(?P<stream205>您已开通的套餐业务有：([\d\.]+[.*]+[，;。]){1,3})", labeling(205).match_workword, line.strip())
-    line = re.sub(ur"(?P<stream206>您已开通如下功能：([.*]+[;。]){1,2})", labeling(206).match_workword, line.strip())
-    line = re.sub(ur"(?P<stream207>您已开通的套餐有：([\d\、]+[.*]+[，;。]){1,3})", labeling(207).match_workword, line.strip())
+    line = re.sub(ur"(?P<stream209>您已开通的优惠如下：([\d\.]+[.*]+[；;。]){1,3})", labeling(209).match_workword, line.strip())
+    line = re.sub(ur"(?P<stream209>\.：([\d\.]+[.*]+[，;。]){1,3})", labeling(209).match_workword, line.strip())
+    line = re.sub(ur"(?P<stream209>您已开通如下功能：([.*]+[;。]){1,2})", labeling(209).match_workword, line.strip())
+    line = re.sub(ur"(?P<stream209>您已开通的套餐有：([\d\、]+[.*]+[，;。]){1,3})", labeling(209).match_workword, line.strip())
+    line = re.sub(ur"(?P<stream209>您本月在用包月收费业务如下：.+;)", labeling(209).match_workword, line.strip())
+    line = re.sub(ur"(?P<stream209>【参加优惠活动订购的包月增值业务有】.+；)", labeling(209).match_workword, line.strip())
+    line = re.sub(ur"(?P<stream209>【中国移动业务】.+；)", labeling(209).match_workword, line.strip())
 
     # 票务
 
-    line = re.sub(ur"(?P<stream208>影票信息：.*，.*，)", labeling(208).match_workword, line.strip())
-    line = re.sub(ur"(?P<stream209>影片：.*，)", labeling(209).match_workword, line.strip())
-    line = re.sub(ur"(?P<stream210>放映时间：.*，)", labeling(210).match_workword, line.strip())
+    line = re.sub(ur"(?P<stream210>影票信息：.*\d\b,)", labeling(210).match_digitnumber, line.strip())
+    line = re.sub(ur"(?P<stream211>影片:[\u4e00-\u9fa5]+，)", labeling(211).match_workword, line.strip())
+    line = re.sub(ur"(?P<stream212>放映时间:.{2,25}，)", labeling(212).match_workword, line.strip())
+    line = re.sub(ur"(?P<stream212>【淘票票】.{16})", labeling(212).match_work_filmtime, line.strip())
+    line = re.sub(ur"(?P<stream211>厅.*《[\u4e00-\u9fa5]+》)", labeling(211).match_filmname, line.strip())
+
+    line = re.sub(ur"(?P<stream213>取票码：\d+)", labeling(213).match_digitnumber, line.strip())
+    # print line
+
+    # 证券
+
+    line = re.sub(ur"(?P<stream213>申购.*[\d\.]+)", labeling(214).match_digitnumber, line.strip())
 
     """
     author: xiaoxingxing
@@ -1654,6 +1898,7 @@ def gen(inpath, name, flag):
             fout.write('\n')
     fout.close()
 
+    count = 0
     fout = open(name, 'w')
     with open('output1.txt') as f:
         for line in f.readlines():
@@ -1669,11 +1914,13 @@ def gen(inpath, name, flag):
                 for w in line.strip().decode('utf-8'):
                     if w == "#":
                         fout.write('\n')
+                        count += 1
                     else:
                         fout.write(w.encode('utf-8') + ' O\n')
 
     os.remove('output1.txt')
     fout.close()
+    print "count is" + str(count)
 
 
 if __name__ == '__main__':
@@ -1685,32 +1932,3 @@ if __name__ == '__main__':
     os.remove('_train.txt')
     os.remove('_test.txt')
     os.remove('_test2.txt')
-
-    # origin_list = []
-
-    # for i, x in enumerate(origin_list):
-    #     f = open("bank_train.txt")
-    #     new_train = open('output/new_bank_train.txt','w')
-    #     statistic = {}
-    #
-    #     while 1:
-    #         lines = f.readlines(100000)
-    #         if not lines:
-    #             break
-    #         for line in lines:
-    #             line = line.decode('utf-8')
-    #
-    #             if statistic.has_key(len(line)):
-    #                 statistic[len(line)] += 1
-    #             else:
-    #                 statistic[len(line)] = 1
-    #
-    #             temp = line.strip().split()
-    #             if len(temp) == 2 and temp[0] == '#':
-    #                 new_train.write('\n')
-    #             else:
-    #                 new_train.write(line.encode('utf-8'))
-    #     f.close()
-    #     new_train.close()
-    #     for x in statistic.items():
-    #         print str(x[0]) + ':' + str(x[1])
