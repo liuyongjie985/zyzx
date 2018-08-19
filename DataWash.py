@@ -71,7 +71,7 @@ while 1:
             put(line)
             continue
 
-        if "WLAN" in line or "语音" in line or "短信" in line or "优惠" in line or "套餐" in line or "如下功能" in line or "影票" in line or "影片" in line or "放映时间" in line:
+        if "WLAN" in line or "语音" in line or "短信" in line or "优惠" in line or "套餐" in line or "如下功能" in line or "影票" in line or "影片" in line or "放映时间" in line or "入住" in line:
             if LAST == True:
                 continue
             put(line)

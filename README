@@ -6,13 +6,16 @@
 
 2.使用DataWash来获取一些与自己业务场景相关的句子,这一步操作过后，生成的filtered_sms_sample文件已经去重了,这一步是非常有必要的，因为数据太大会导致下一步时间非常久
 
-3.使用gen_train_test_total来自动标注训练语料，源文件已经按照编写者进行分块，每个人在自己的区域进行修改即可
+3.使用gen_train_test_total来自动标注训练语料，源文件已经按照编写者进行分块，每个人在自己的区域进行修改即可,文件会产生total_train.txt和total_test.txt两个文件，分别用于训练与测试模型，代码文件开头 有标志变量TEST，为True代表所有句子都输出到total_train.txt，为False表示十分之一的数据被分到total_test.txt
 
 4.使用shuffleData从第二步获取的文件中抽出一些测试样例
 
-5.使用第三步中编写好的数据对第四步产生的文件进行测试，会生成train_total.txt与test_total.txt两个标注文件
+5.使用第三步中gen_train_test_total对第四步产生的文件进行运行，会生成train_total.txt与test_total.txt两个标注文件
 
-6.使用DataAssemble对train_total.txt文件进行测试，结果输出为result_out，根据结果修改提升场景效果
+6.使用DataAssemble对train_total.txt文件进行运行，结果输出为result_out，根据结果修改提升场景效果
 
 ----------------------------------模型分割线----------------------------------
 7.使用第五步的输出文件作为模型的输入文件，训练模型，训练出来的模型效果与第六步测试的效果呈正相关
+
+
+8.使用WriteToExcel将result_out转化成标准xlsx文件

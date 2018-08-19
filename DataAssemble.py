@@ -27,11 +27,6 @@ my_dict = {"B-1": "截止时间", "B-2": "国内通用流量", "B-3": "省内剩
            'B-213': '取票码',
            'B-214': '申购',
 
-           'B-200': '剩余流量总计', 'B-201': 'WLAN剩余', 'B-202': '流量剩余', 'B-203': '语音剩余', 'B-204': '您已开通的优惠如下',
-           'B-205': '您已开通的套餐业务有',
-           'B-206': '您已开通如下功能', 'B-207': '您已开通的套餐有', 'B-208': '影票信息', 'B-209': '影片', 'B-210': '放映时间', 'B-211': '短信剩余',
-           'B-214': '申购',
-
            'B-401': '本月总流量', 'B-402': '已用数据流量', 'B-403': "套餐内使用流量",
            'B-404': "套餐内使用流量", 'B-405': "时间", 'B-467': '本月套餐流量',
 
@@ -40,6 +35,7 @@ my_dict = {"B-1": "截止时间", "B-2": "国内通用流量", "B-3": "省内剩
 target_list = []
 middle_list = []
 explain_list = []
+template_list = []
 
 for x in my_dict.items():
     explain_list.append(x[1])
@@ -56,8 +52,12 @@ value_list = []
 for x in target_list:
     value_list.append([])
 sentence = ""
+template = ""
 
 count = 0
+
+temp_sign = 0
+
 o = open("output/result_out", "w")
 while 1:
     lines = f.readlines(100000)
@@ -72,6 +72,8 @@ while 1:
                     value_list[i].append(value[i])
                 value[i] = ""
             o.write(sentence)
+            o.write("\n")
+            o.write(template)
             o.write("\n")
             o.write("(")
             count += 1
@@ -90,18 +92,24 @@ while 1:
                 sign[j] = 0
 
             sentence = ""
+            template = ""
             o.write(")")
         else:
             for i, x in enumerate(target_list):
                 if temp[1].strip() == x:
                     sign[i] = 1
+                    temp_sign = 1
                 if sign[i] == 1 and temp[1] == "O\n":
                     sign[i] = 0
+                    temp_sign = 0
                     if value[i] != '':
                         value_list[i].append(value[i])
+                        template += "txt_" + my_dict[target_list[i]]
                     value[i] = ""
                 if sign[i] == 1:
                     value[i] += temp[0].strip()
+            if temp_sign == 0:
+                template += temp[0].strip()
 
         if len(temp) == 2:
             sentence += temp[0]
