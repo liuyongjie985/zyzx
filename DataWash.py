@@ -1,5 +1,5 @@
 # coding:utf-8
-file = open("data/TotalData.txt")
+file = open("data/SubTotalData.txt")
 
 LAST = False
 

@@ -2,14 +2,15 @@
 import os
 import re
 import random
+import traceback
 
 # inpath = 'data/TotalData.txt'
 # inpath = 'output/filtered_sms_sample.txt'
 # inpath = 'output/sampleData.txt'
 # inpath = 'sample.txt'
-# inpath = 'test2'
-inpath = 'data/TestData.txt'
-# inpath = 'data/test.txt'
+# inpath = 'test'
+inpath = 'test2'
+# inpath = 'data/TestData.txt'
 
 # TEST = False
 TEST = True
@@ -208,6 +209,13 @@ place = [u'北京', u'天津', u'上海', u'重庆', u'新疆', u'乌鲁木齐',
 flow_re = u"([\d\.]+[MGB(MB)(GB)]){1,3}"
 money_re = ur'[\d\.,]+'
 
+# 必有：月、日
+# 可有：年
+# 时
+# 分
+
+time_re = ur"(\d{4,4}年)?\d{1,2}月\d{1,2}日((\d{2,2}时\d{2,2}分)|(\d{2,2}\:\d{2,2}))?"
+
 
 # inpath = 'test'
 
@@ -244,6 +252,26 @@ def split_train_test(path):
 """
 
 
+def getWay(target, line):
+    if target in line:
+        firstrMatch = re.compile(target)
+
+        try:
+            idx = firstrMatch.search(line).start()
+
+            re_str = ""
+
+            for i, c in enumerate(line[idx:idx + len(target)]):
+                if i == 0:
+                    re_str += '\n' + c + ' B-59' + '\n'
+                else:
+                    re_str += c + ' I-59' + '\n'
+            line = line[:idx] + re_str + line[idx + len(target):]
+        except:
+            pass
+    return line
+
+
 class labeling():
     def __init__(self, label):
         self.label = label
@@ -252,6 +280,10 @@ class labeling():
         self.label = label
         self.end = e
         self.start = s
+        return self
+
+    def newAdjust(self, ln):
+        self.loopNum = ln
         return self
 
     def match_digitnumber(self, matched):
@@ -478,7 +510,6 @@ class labeling():
     """
 
     def match_firstNumber(self, matched):
-        re_str = ''
         key_value = matched.group("stream" + str(self.label))
         word_list = [c for c in key_value]
 
@@ -498,7 +529,6 @@ class labeling():
         return re_str
 
     def match_firstNumberWithEnd(self, matched):
-        re_str = ''
         key_value = matched.group("stream" + str(self.label))
         word_list = [c for c in key_value]
 
@@ -508,6 +538,8 @@ class labeling():
             idx = firstrNum.search(key_value).start()
         except:
             return key_value
+
+        firstrNum = re.compile(self.end)
 
         try:
             end = firstrNum.search(key_value).start()
@@ -522,8 +554,148 @@ class labeling():
                 re_str += c + ' I-' + str(self.label) + '\n'
         return re_str
 
+    def match_firstNumberWithEndNoBias(self, matched):
+        key_value = matched.group("stream" + str(self.label))
+        word_list = [c for c in key_value]
+
+        firstrNum = re.compile("\d")
+
+        try:
+            idx = firstrNum.search(key_value).start()
+        except:
+            return key_value
+
+        firstrNum = re.compile(self.end)
+
+        try:
+            end = firstrNum.search(key_value).start()
+        except:
+            end = len(word_list) + 1
+
+        re_str = ''.join(word_list[0:idx])
+        for i, c in enumerate(word_list[idx:end]):
+            if i == 0:
+                re_str += '\n' + c + ' B-' + str(self.label) + '\n'
+            else:
+                re_str += c + ' I-' + str(self.label) + '\n'
+        re_str += ''.join(word_list[end:])
+        return re_str
+
+    def match_StartAndEndNoBias(self, matched):
+        key_value = matched.group("stream" + str(self.label))
+        word_list = [c for c in key_value]
+
+        endRe = re.compile(self.end)
+
+        try:
+            end = endRe.search(key_value).start()
+        except:
+            end = len(word_list) + 1
+
+        re_str = ''.join(word_list[0:self.start])
+        for i, c in enumerate(word_list[self.start:end]):
+            if i == 0:
+                re_str += '\n' + c + ' B-' + str(self.label) + '\n'
+            else:
+                re_str += c + ' I-' + str(self.label) + '\n'
+        re_str += (''.join(word_list[end:]))
+        return re_str
+
+    # 一个匹配中标两个标签,以self.start为略过字符,以self.end作为分割
+    def match_Special1WithSplit(self, matched):
+        key_value = matched.group("stream" + str(self.label))
+        word_list = [c for c in key_value]
+
+        splitRe = re.compile(self.end)
+
+        try:
+            end = splitRe.search(key_value).start()
+        except:
+            end = len(word_list) + 1
+
+        re_str = "".join(word_list[:self.start])
+
+        for i, c in enumerate(word_list[self.start:end]):
+            if i == 0:
+                re_str += '\n' + c + ' B-' + str(self.label) + '\n'
+            else:
+                re_str += c + ' I-' + str(self.label) + '\n'
+
+        for i, c in enumerate(word_list[end:]):
+            if i == 0:
+                re_str += '\n' + c + ' B-' + str(self.label + 1) + '\n'
+            else:
+                re_str += c + ' I-' + str(self.label + 1) + '\n'
+
+        return re_str
+
+    # 一个匹配中标两个标签,以self.start以end开始的略过偏移量,以self.end作为分割
+    def match_Special2WithBiasSplit(self, matched):
+        key_value = matched.group("stream" + str(self.label))
+        word_list = [c for c in key_value]
+
+        splitRe = re.compile(self.end)
+
+        try:
+            end = splitRe.search(key_value).start()
+        except:
+            end = len(word_list) + 1
+
+        re_str = ""
+
+        for i, c in enumerate(word_list[:end]):
+            if i == 0:
+                re_str += '\n' + c + ' B-' + str(self.label) + '\n'
+            else:
+                re_str += c + ' I-' + str(self.label) + '\n'
+
+        re_str += ''.join(word_list[end:end + self.start])
+
+        for i, c in enumerate(word_list[end + self.start:]):
+            if i == 0:
+                re_str += '\n' + c + ' B-' + str(self.label + 1) + '\n'
+            else:
+                re_str += c + ' I-' + str(self.label + 1) + '\n'
+
+        return re_str
+
+    # 给定一个开始数字字符后，以开始字符开始到最后
+    def match_WithStart(self, matched):
+        key_value = matched.group("stream" + str(self.label))
+        word_list = [c for c in key_value]
+
+        startRe = re.compile(self.start)
+
+        try:
+            start = startRe.search(key_value).start()
+        except:
+            return key_value
+
+        re_str = "".join(word_list[:self.start])
+
+        for i, c in enumerate(word_list[start:]):
+            if i == 0:
+                re_str += '\n' + c + ' B-' + str(self.label) + '\n'
+            else:
+                re_str += c + ' I-' + str(self.label) + '\n'
+
+        return re_str
+
+    # 给定一个开始数字后，以开始位置到最后
+
+    def match_Start(self, matched):
+        key_value = matched.group("stream" + str(self.label))
+        word_list = [c for c in key_value]
+
+        re_str = ''.join(word_list[0:self.start])
+        for i, c in enumerate(word_list[self.start:]):
+            if i == 0:
+                re_str += '\n' + c + ' B-' + str(self.label) + '\n'
+            else:
+                re_str += c + ' I-' + str(self.label) + '\n'
+        return re_str
+
     def match_firstNumberWithStart(self, matched):
-        re_str = ''
         key_value = matched.group("stream" + str(self.label))
         word_list = [c for c in key_value]
 
@@ -535,6 +707,56 @@ class labeling():
                 re_str += '\n' + c + ' B-' + str(self.label) + '\n'
             else:
                 re_str += c + ' I-' + str(self.label) + '\n'
+        return re_str
+
+    def general(self, matched):
+        key_value = matched.group("stream" + str(self.label))
+
+        re_str = ''
+        for i, c in enumerate(key_value):
+
+            if i == 0:
+                re_str += '\n' + c + ' B-' + str(self.label) + '\n'
+            else:
+                re_str += c + ' I-' + str(self.label) + '\n'
+        return re_str
+
+    def match_newGeneralWithLoop(self, matched):
+
+        idx_list = []
+
+        for x in xrange(self.loopNum):
+            idx_list.append(matched.start("target" + str(self.label + x)))
+            idx_list.append(matched.end("target" + str(self.label + x)))
+
+        bias = matched.start("stream" + str(self.label))
+        whole = matched.group("stream" + str(self.label))
+
+        re_str = ""
+        count = 0
+        sign = 0
+
+        start = idx_list[count]
+        end = idx_list[count + 1]
+
+        for i, c in enumerate(whole):
+            if i + bias < start or i + bias >= end:
+                re_str += c
+            else:
+                # if i + bias >= start and i + bias < end:
+                if sign == 0:
+                    re_str += '\n' + c + ' B-' + str(self.label + count / 2) + '\n'
+                    sign = 1
+                else:
+                    re_str += c + ' I-' + str(self.label + count / 2) + '\n'
+                continue
+            if i + bias == end:
+                sign = 0
+                count += 2
+                if count < 2 * self.loopNum:
+                    start = idx_list[count]
+                    end = idx_list[count + 1]
+
         return re_str
 
     """
@@ -550,65 +772,11 @@ class labeling():
 
 
 def dealwithline(line):
-    # 转账    金额
-    def _line1(matched):
-        re_str = ''
-        time = matched.group("stream9")
-        word_list = [c for c in time]
-        re_str = ''.join(word_list[0:2])
-        for i, c in enumerate(word_list[2:]):
-            if i == 0:
-                re_str += u'\n' + c + u' B-9\n'
-            else:
-                re_str += c + u' I-９\n'
-        # re_str += ''.join(word_list[-1])
-        return re_str
-
-    # 您尾号
-    def _line2(matched):
-        re_str = ''
-        time = matched.group("stream10")
-        word_list = [c for c in time]
-
-        firstrNum = re.compile("\d")
-
-        idx = firstrNum.search(time).start()
-
-        re_str = ''.join(word_list[:idx])
-        for i, c in enumerate(word_list[idx:]):
-            if i == 0:
-                re_str += u'\n' + c + u' B-' + u'10' + u'\n'
-            else:
-                re_str += c + u' I-' + u'10' + u'\n'
-        # re_str += ''.join(word_list[-1])
-        return re_str
-
     # 支出
     def _line3(matched):
         re_str = ''
         time = matched.group("stream11")
         word_list = [c for c in time]
-        firstrNum = re.compile("\d")
-
-        idx = firstrNum.search(time).start()
-
-        re_str = ''.join(word_list[0:idx])
-        for i, c in enumerate(word_list[idx:]):
-            if i == 0:
-                re_str += '\n' + c + ' B-' + '11' + '\n'
-            else:
-                re_str += c + ' I-' + '11' + '\n'
-        # re_str += ''.join(word_list[-1])
-        return re_str
-
-    def _line4(matched):
-        re_str = ''
-        time = matched.group("stream11")
-        if u'验证码' in time or u"校验码" in time:
-            return time
-
-        word_list = [c for c in time]
-
         firstrNum = re.compile("\d")
 
         idx = firstrNum.search(time).start()
@@ -777,38 +945,6 @@ def dealwithline(line):
                 re_str += '\n' + c + ' B-' + '14' + '\n'
             else:
                 re_str += c + ' I-' + '14' + '\n'
-        # re_str += ''.join(word_list[-1])
-        return re_str
-
-    def _line21(matched):
-        re_str = ''
-        time = matched.group("stream15")
-        word_list = [c for c in time]
-
-        firstrNum = re.compile("\d")
-
-        idx = firstrNum.search(time).start()
-
-        re_str = ''.join(word_list[0:idx])
-        for i, c in enumerate(word_list[idx:]):
-            if i == 0:
-                re_str += '\n' + c + ' B-' + '15' + '\n'
-            else:
-                re_str += c + ' I-' + '15' + '\n'
-        # re_str += ''.join(word_list[-1])
-        return re_str
-
-    def _line23(matched):
-        re_str = ''
-        time = matched.group("stream17")
-        word_list = [c for c in time]
-
-        re_str = ''
-        for i, c in enumerate(word_list):
-            if i == 0:
-                re_str += '\n' + c + ' B-' + '17' + '\n'
-            else:
-                re_str += c + ' I-' + '17' + '\n'
         # re_str += ''.join(word_list[-1])
         return re_str
 
@@ -996,22 +1132,6 @@ def dealwithline(line):
         # re_str += ''.join(word_list[-1])
         return re_str
 
-    def _line405(matched):
-        re_str = ''
-        time = matched.group("stream405")
-
-        word_list = [c for c in time]
-
-        re_str = ''
-        for i, c in enumerate(word_list):
-
-            if i == 0:
-                re_str += '\n' + c + ' B-' + '405' + '\n'
-            else:
-                re_str += c + ' I-' + '405' + '\n'
-        # re_str += ''.join(word_list[-1])
-        return re_str
-
     def _line111(matched):
         re_str = ''
         time = matched.group("stream111")
@@ -1090,11 +1210,49 @@ def dealwithline(line):
     end 
     '''
 
-    # 提取验证码和动态密码
-    start = -1
-    end = -1
-
     line = line.decode("utf-8")
+
+    '''
+    author:liuyongjie
+    function:以具体测试用例调整与增强
+    start    
+    '''
+
+    line = re.sub(
+        ur"(?P<stream75>截至(?P<target75>" + time_re + ur")(,|，)您尾号\d{4,4}信用卡(?P<target76>\d{1,2}/\d{1,2}-\d{1,2}/\d{1,2})账单剩余应还款额(?P<target77>" + money_re + ur")元?)",
+        labeling(75).newAdjust(3).match_newGeneralWithLoop,
+        line.strip())
+
+    line = re.sub(ur"(?P<stream78>(?P<target78>" + time_re + ur")前?归还剩余最低还款额(?P<target79>" + money_re + ur")元?)",
+                  labeling(78).newAdjust(2).match_newGeneralWithLoop,
+                  line.strip())
+
+    line = re.sub(ur"(?P<stream24>应还款金?额为?(人民币)?(?P<target24>" + money_re + ur")元?)",
+                  labeling(24).newAdjust(1).match_newGeneralWithLoop,
+                  line.strip())
+
+    line = re.sub(ur"(?P<stream25>最低还款额为?(人民币)?" + money_re + ur"元?)",
+                  labeling(25).match_firstNumber,
+                  line.strip())
+
+    line = re.sub(
+        ur"(?P<stream26>[(最后)(到期)]?还款日(?P<target26>" + time_re + "))",
+        labeling(26).newAdjust(1).match_newGeneralWithLoop,
+        line.strip())
+    # line = re.sub(
+    #     ur"(?P<stream26>到期还款日(?P<target26>(\d{4,4}年)?(\d{1,2}月)(\d{1,2}日)(\d{2,2}时)?(\d{2,2}分)?(\d{2,2}\:\d{2,2})?))",
+    #     labeling(26).newAdjust(1).match_newGeneralWithLoop,
+    #     line.strip())
+
+    line = re.sub(ur"(?P<stream38>于" + time_re + ur"还款)",
+                  labeling(38).adjust(38, 0, u"还").match_firstNumberWithEndNoBias,
+                  line.strip())
+
+    '''
+    author:liuyongjie
+    function:以具体测试用例调整与增强
+    end      
+    '''
 
     line = re.sub(ur"(?P<stream314>(入住的|预订的)[\u4E00-\u9FA5A-Za-z0-9_]+酒店)",
                   labeling(314).adjust(314, 3, 0).match_firstNumberWithStart,
@@ -1107,6 +1265,7 @@ def dealwithline(line):
     idx_list = [i.start() for i in re.finditer(u'验证码', line)]
     idx_list += [i.start() for i in re.finditer(u'动态密码', line)]
     idx_list += [i.start() for i in re.finditer(u'校验码', line)]
+    idx_list += [i.start() for i in re.finditer(u'短信密码', line)]
     for idx in idx_list:
         # 先看后方5个单位内有没有验证码
         end = idx + 3 + 5 + 1
@@ -1206,34 +1365,189 @@ def dealwithline(line):
     '''
 
     # 银行类
-    # 301: 交易金额
-    # 302: 日期
-    # 303: 银行账号（尾号）
-    # 304: 取款金额
-    # 305: 支付金额
-    # 306: 余额
-    # 307: 存入/转入
-    # 312: 还款日
-    # 313: 已还金额
-
-    # 积分
-
-    # 银行类
-    if u"10085" not in line:
-        line = re.sub(ur"(?P<stream9>转账[\d\.]+)", _line1, line.strip())
-        line = re.sub(ur"(?P<stream9>金额[\d\.]+)", _line1, line.strip())
-        line = re.sub(ur"(?P<stream9>转出[\d\.]+)", _line1, line.strip())
 
     if u"银行" in line or u"信用卡" in line:
-        line = re.sub(ur"(?P<stream600>[(交易)(消费)].{,2}金额为?-?[\d\.]+)", _line600, line.strip())
-        line = re.sub(ur"(?P<stream600>[(交易)(消费)](人民币)?为?-?[\d\.]+)", labeling(600).match_firstNumber, line.strip())
-        line = re.sub(ur"(?P<stream677>[(退款)(退货)](人民币)?为?-?[\d\.]+)", labeling(677).match_firstNumber, line.strip())
+        # line = re.sub(ur"(?P<stream103>[(交易)(消费)为?-?[\d\.]+)", , line.strip())
+        line = re.sub(ur"(?P<stream103>消费(人民币|金额)?为?-?(?P<target103>" + money_re + ur"))",
+                      labeling(103).newAdjust(1).match_newGeneralWithLoop, line.strip())
 
-    line = re.sub(ur"(?P<stream677>[(人民币)(担保金)]" + money_re + ur"元?已退)",
-                  labeling(677).adjust(677, 0, '退').match_firstNumberWithEnd,
-                  line.strip())
+        line = re.sub(ur"(?P<stream35>于?(?P<target35>" + time_re + ur")消费)",
+                      labeling(35).newAdjust(1).match_newGeneralWithLoop, line.strip())
 
-    line = re.sub(ur"(?P<stream405>(\d{4,4}年)(\d{1,2}月)(\d{1,2}日)?(\d{2,2}时)?(\d{2,2}分)?(\d{2,2}\:\d{2,2})?)", _line405,
+        line = re.sub(ur"(?P<stream107>(退款)|(退货)(人民币)?为?-?(?P<target107>" + money_re + ur")元?)",
+                      labeling(107).newAdjust(1).match_newGeneralWithLoop, line.strip())
+
+        line = re.sub(ur"(?P<stream36>(?P<target36>\d{1,2}月)账单.(?P<target37>" + money_re + ur")元?)",
+                      labeling(36).newAdjust(2).match_newGeneralWithLoop, line.strip())
+
+        line = re.sub(ur"(?P<stream39>付款(金额)?(人民币)?为?" + money_re + ")", labeling(39).match_firstNumber, line.strip())
+
+        line = re.sub(ur"(?P<stream41>((您账号|户)|(账号后[四4]位))(?P<target41>\d{4,4}))",
+                      labeling(41).newAdjust(1).match_newGeneralWithLoop,
+                      line.strip())
+
+        line = re.sub(ur"(?P<stream70>您向(?P<target70>.{2,4})尾号为?(?P<target71>\d{4,4})的?((账户)|(用户)|(账号))转账)",
+                      labeling(70).newAdjust(2).match_newGeneralWithLoop,
+                      line.strip())
+        line = re.sub(ur"(?P<stream71>您正在给尾号为?\*?(?P<target71>\d{4,4})的?((账户)|(用户)|(账号))转账)",
+                      labeling(71).newAdjust(1).match_newGeneralWithLoop,
+                      line.strip())
+
+        line = re.sub(ur"(?P<stream72>序号(?P<target72>\d+))",
+                      labeling(72).newAdjust(1).match_newGeneralWithLoop,
+                      line.strip())
+
+        line = re.sub(ur"(?P<stream9>转(账|出)(?P<target9>" + money_re + ur")元?)",
+                      labeling(9).newAdjust(1).match_newGeneralWithLoop, line.strip())
+
+        if u"收款人" in line:
+            line = re.sub(ur"(?P<stream9>金额" + money_re + ")", labeling(9).match_firstNumber, line.strip())
+
+        line = re.sub(ur"(?P<stream42>收款人：?(?P<target42>.{2,4}?)，)",
+                      labeling(42).newAdjust(1).match_newGeneralWithLoop,
+                      line.strip())
+
+        line = re.sub(ur"(?P<stream43>欢迎您使用(?P<target43>.{4,6}?))",
+                      labeling(43).newAdjust(1).match_newGeneralWithLoop,
+                      line.strip())
+
+        line = re.sub(ur"(?P<stream47>((致电)|(咨询)|(热线电话))(?P<target47>\d{4,13}))",
+                      labeling(47).newAdjust(1).match_newGeneralWithLoop,
+                      line.strip())
+
+        line = re.sub(ur"(?P<stream59>正在使用(?P<target59>.{6,10})快捷支付)",
+                      labeling(59).newAdjust(1).match_newGeneralWithLoop,
+                      line.strip())
+
+        if not u"尊敬的客户" in line:
+            line = re.sub(ur"(?P<stream48>尊敬的(?P<target48>.{2,4}?)(，|,))",
+                          labeling(48).newAdjust(1).match_newGeneralWithLoop,
+                          line.strip())
+        line = re.sub(ur"(?P<stream49>密码连续输入错误)",
+                      labeling(49).general,
+                      line.strip())
+        line = re.sub(ur"(?P<stream50>暂时(?P<target50>锁定))",
+                      labeling(50).newAdjust(1).match_newGeneralWithLoop,
+                      line.strip())
+        line = re.sub(ur"(?P<stream51>请次日[重再]试或当日.+?密码重置)",
+                      labeling(51).general,
+                      line.strip())
+        line = re.sub(
+            ur"(?P<stream44>于(?P<target44>" + time_re + ur")完成(一笔)?(?P<target45>.{,6}交易)((，金额)|(人民币))为?-?(?P<target46>" + money_re + ur")元?)",
+            labeling(44).newAdjust(3).match_newGeneralWithLoop,
+            line.strip())
+
+        line = re.sub(
+            ur"(?P<stream64>】(?P<target64>.{2,4})于(?P<target65>" + time_re + ur")向您尾号(?P<target66>\d{4,4})账户完成(?P<target67>.{,6}交易)((，金额)|(人民币))为?-?(?P<target68>" + money_re + ur")元?)",
+            labeling(64).newAdjust(5).match_newGeneralWithLoop,
+            line.strip())
+
+        line = re.sub(
+            ur"(?P<stream44>于(?P<target44>" + time_re + ur")通过(?P<target45>.{,4})进行了.{4,10}交易)",
+            labeling(44).newAdjust(2).match_newGeneralWithLoop,
+            line.strip())
+
+        line = re.sub(
+            ur"(?P<stream106>进行了(?P<target106>.{4,10})交易)",
+            labeling(106).newAdjust(1).match_newGeneralWithLoop,
+            line.strip())
+
+        # 开通的消息服务在5月10日扣缴下月服务费时扣费失败
+        line = re.sub(
+            ur"(?P<stream60>开通的(?P<target60>.{,6}服务)在(?P<target61>" + time_re + ur")(?P<target62>.{,10})时(?P<target63>缴|扣费.{,2})(,|，))",
+            labeling(60).newAdjust(4).match_newGeneralWithLoop, line.strip())
+
+        line = re.sub(
+            ur"(?P<stream51>请查询账号状态是否正常并及时处理)",
+            labeling(51).general, line.strip())
+
+        line = re.sub(
+            ur"(?P<stream69>您在(?P<target69>.{,12}账户))",
+            labeling(69).newAdjust(1).match_newGeneralWithLoop, line.strip())
+
+        line = re.sub(
+            ur"(?P<stream9>转支人民币\：?-?(?P<target9>" + money_re + ur")元?)",
+            labeling(9).newAdjust(1).match_newGeneralWithLoop,
+            line.strip())
+
+        line = re.sub(ur"(?P<stream52>(?P<target52>" + time_re + "))",
+                      labeling(52).general,
+                      line.strip())
+
+        line = re.sub(
+            ur"(?P<stream54>申请(?P<target54>开通.+?)(,|，))",
+            labeling(54).newAdjust(1).match_newGeneralWithLoop,
+            line.strip())
+
+        line = re.sub(
+            ur"(?P<stream54>您正在(?P<target54>通过.{,6}申请.{,4}))(。|.)",
+            labeling(54).newAdjust(1).match_newGeneralWithLoop,
+            line.strip())
+
+        line = re.sub(
+            ur"(?P<stream72>绑定手机号修改为?：?:?(?P<target72>\d{11,11}))",
+            labeling(72).newAdjust(1).match_newGeneralWithLoop,
+            line.strip())
+
+        line = re.sub(
+            ur"(?P<stream72>绑定手机号:?：?(?P<target72>\d{11,11}))",
+            labeling(72).newAdjust(1).match_newGeneralWithLoop,
+            line.strip())
+
+        line = re.sub(
+            ur"(?P<stream73>短信编号:?：?(?P<target73>\d+))",
+            labeling(73).newAdjust(1).match_newGeneralWithLoop,
+            line.strip())
+
+        line = re.sub(
+            ur"(?P<stream85>编号\d+(,|，).{2,4}[A-Za-z0-9\-](:|：))",
+            labeling(85).newAdjust(1).match_newGeneralWithLoop,
+            line.strip())
+
+        # , 王刚B3 - 1 - 1502 - 06
+        # 8:201804
+        # 月份水量16吨水费44
+        # .8
+        # 元, 请于05月25日前缴费
+
+
+        line = re.sub(
+            ur"(?P<stream74>密码序号:?：?(?P<target74>\d+))",
+            labeling(74).newAdjust(1).match_newGeneralWithLoop,
+            line.strip())
+
+        way_list = [u"支付宝", u"微信零钱", u"ATM", u"现金交易"]
+        for x in way_list:
+            line = getWay(x, line)
+
+        line = re.sub(
+            ur"(?P<stream53>回复\:?(?P<target53>[A-Za-z0-9]{4,8})申请(?P<target54>分\d{1,2}期偿还)最大可分期金额(?P<target55>" + money_re + ur")元?)",
+            labeling(53).newAdjust(3).match_newGeneralWithLoop,
+            line.strip())
+        line = re.sub(
+            ur"(?P<stream56>每期本金(?P<target56>" + money_re + ur")元?)",
+            labeling(56).newAdjust(1).match_newGeneralWithLoop,
+            line.strip())
+
+        line = re.sub(
+            ur"(?P<stream57>每期手续费(?P<target57>" + money_re + ur")元?)",
+            labeling(57).newAdjust(1).match_newGeneralWithLoop,
+            line.strip())
+
+        line = re.sub(ur"(?P<stream46>扣款.(人民币)?(?P<target46>" + money_re + ur")元?)",
+                      labeling(46).newAdjust(1).match_newGeneralWithLoop,
+                      line.strip())
+
+        line = re.sub(ur"(?P<stream81>(?P<target81>信用卡)申请(?P<target82>正在审核中))",
+                      labeling(81).newAdjust(2).match_newGeneralWithLoop,
+                      line.strip())
+
+        line = re.sub(ur"(?P<stream83>(?P<target83>\d+)（(?P<target84>申请进度查询)）)",
+                      labeling(83).newAdjust(2).match_newGeneralWithLoop,
+                      line.strip())
+
+    line = re.sub(ur"(?P<stream107>(人民币)|(担保金)(?P<target107>" + money_re + ur")元?已退)",
+                  labeling(107).newAdjust(1).match_newGeneralWithLoop,
                   line.strip())
 
     line = re.sub(ur"(?P<stream312>还款最迟(\d{4,4}年)(\d{1,2}月)(\d{1,2}日)?(\d{2,2}时)?(\d{2,2}分)?(\d{2,2}\:\d{2,2})?)",
@@ -1242,15 +1556,22 @@ def dealwithline(line):
     line = re.sub(ur"(?P<stream678>应还款?金?额?[￥＄]" + money_re + ur")",
                   labeling(678).match_firstNumber, line.strip())
 
-    line = re.sub(ur"(?P<stream10>尾号.{0,1}\d{4,4})", _line2, line.strip())
+    line = re.sub(ur"(?P<stream10>尾号(为|是|：)?(?P<target10>\d{3,4}))", labeling(10).newAdjust(1).match_newGeneralWithLoop,
+                  line.strip())
 
-    line = re.sub(ur"(?P<stream11>取款[\d\.]{2,})", _line3, line.strip())
+    line = re.sub(ur"(?P<stream58>取款(?P<target58>" + money_re + ur")元?)",
+                  labeling(58).newAdjust(1).match_newGeneralWithLoop, line.strip())
     line = re.sub(ur"(?P<stream11>支[出取](人民币)?为?(\(.+\))?[\d\.]+)", _line3, line.strip())
 
-    line = re.sub(ur"(?P<stream11>付款.{0,3}\d+)", _line4, line.strip())
+    line = re.sub(ur"(?P<stream12>余额为?：?-?(人民币)?(?P<target12>" + money_re + ur")元?)",
+                  labeling(12).newAdjust(1).match_newGeneralWithLoop, line.strip())
+    line = re.sub(ur"(?P<stream12>托收(?P<target12>" + money_re + ur")元?)",
+                  labeling(12).newAdjust(1).match_newGeneralWithLoop, line.strip())
 
-    line = re.sub(ur"(?P<stream12>余额为?：?-?(人民币)?[\d\.,]{2,})", _line5, line.strip())
-    line = re.sub(ur"(?P<stream12>托收[\d\.,]{2,})", _line5, line.strip())
+    line = re.sub(ur"(?P<stream999>编号(?P<target999>\d+))",
+                  labeling(999).newAdjust(1).match_newGeneralWithLoop, line.strip())
+
+
 
     if u"入账" in line:
         line = re.sub(ur"(?P<stream13>人民币[\d\.]+)", _line6, line.strip())
@@ -1275,7 +1596,7 @@ def dealwithline(line):
     idx_list += [i.start() for i in re.finditer(u'到', line)]
     idx_list += [i.start() for i in re.finditer(u'至', line)]
     for idx in idx_list:
-        # 先看后方5个单位内有没有验证码
+        # 先看后方5个单位内有没有地名
         end = idx + 3 + 10 + 1
         if end > len(line):
             end = len(line)
@@ -1311,15 +1632,94 @@ def dealwithline(line):
                     else:
                         re_str += x + ' I-' + str(tag) + '\n'
                 line = line[:firstWordStart] + re_str + line[firstWordEnd:]
+
+                # 判断一下具体机场的号T1,T2
+                # 先看后方5个单位内有没有(
+                end = firstWordStart + 3 + 25
+                if end > len(line):
+                    end = len(line)
+                start = firstWordStart
+                temp = line[start:end]
+                a = -1
+                b = -1
+                sign = 0
+
+                if u'(' in temp and u')' in temp:
+                    re_str = ""
+                    for l, x in enumerate(temp):
+                        if x == u'(':
+                            a = l
+                            sign = 1
+                            re_str += x
+                            continue
+
+                        if sign == 1 and x == u')':
+                            b = l
+                            sign = 0
+                        if sign == 1:
+                            if a == l - 1:
+                                re_str += '\n' + x + ' B-' + str(tag + 18) + '\n'
+                            else:
+                                re_str += x + ' I-' + str(tag + 18) + '\n'
+                            continue
+                        re_str += x
+                    # temp = temp[:a] + re_str + temp[b:]
+                    line = line[:start] + re_str + line[end:]
+
                 if tag == 15:
                     tag += 1
                 else:
                     tag -= 1
-            # 始发地终点不可能有两个
             break;
 
     if u"火车" in line or u"飞机" in line or u"航班" in line:
-        line = re.sub(ur"(?P<stream17>\d{2,2}\:\d{2,2})", _line23, line.strip())
+        line = re.sub(ur"(?P<stream27>(\d{4,4}年)?(\d{1,2}月)(\d{1,2}日))",
+                      labeling(27).general, line.strip())
+
+        start_list = [i.start() for i in re.finditer(ur"(\d{2,2}\:\d{2,2})", line)]
+        end_list = [i.end() for i in re.finditer(ur"(\d{2,2}\:\d{2,2})", line)]
+
+        try:
+
+            idx = start_list[-1]
+            end = end_list[-1]
+            start = idx
+            re_str = ""
+            while idx < end:
+                if idx == start:
+
+                    re_str += '\n' + line[idx] + ' B-28\n'
+                else:
+                    re_str += line[idx] + ' I-28\n'
+
+                idx += 1
+
+            line = line[:start] + re_str + line[end:]
+
+            idx = start_list[-2]
+            end = end_list[-2]
+            start = idx
+            re_str = ""
+            while idx < end:
+                if idx == start:
+
+                    re_str += '\n' + line[idx] + ' B-29\n'
+                else:
+                    re_str += line[idx] + ' I-29\n'
+
+                idx += 1
+
+            line = line[:start] + re_str + line[end:]
+        except:
+            traceback.print_exc()
+            pass
+
+        line = re.sub(ur"(?P<stream30>(?P<target30>东航[A-Z0-9]+?)航班)",
+                      labeling(30).newAdjust(1).match_newGeneralWithLoop,
+                      line.strip())
+
+        line = re.sub(ur"(?P<stream31>，.{2,4}已预订成功)", labeling(31).adjust(31, 1, u"已").match_Special1WithSplit,
+                      line.strip())
 
     '''
     author: jsheng
@@ -1395,9 +1795,9 @@ def dealwithline(line):
     # 充值成功 缴费金额-104 必配
     line = re.sub(ur"(?P<stream104>(充值成功|充值金额|成功充值|缴费金额)-?为?[\d\.]{1,})", labeling(104).match_digitnumber, line.strip())
 
-    # 交易提醒 支付金额-105 发起交易-106 退款金额-107 必配
+    # 交易提醒 支付金额-105 发起交易-46 退款金额-107 必配
     line = re.sub(ur"(?P<stream105>支出.*(人民币)?(:)?[\d\.]{1,})", labeling(105).match_digitnumber, line.strip())
-    line = re.sub(ur"(?P<stream106>(发起)?交易.*(人民币)?-?为?[\d\.]{1,})", labeling(106).match_digitnumber, line.strip())
+    line = re.sub(ur"(?P<stream46>(发起)?交易.*(人民币)?-?为?[\d\.]{1,})", labeling(46).match_digitnumber, line.strip())
     line = re.sub(ur"(?P<stream107>[\d\.]{1,}元退款)", labeling(107).match_digitnumber, line.strip())
     line = re.sub(ur"(?P<stream107>退款([a-z]{1,})?([A-Z]{1,})?(金额)-?为?[\d\.]{1,})", labeling(107).match_digitnumber,
                   line.strip())
@@ -1476,7 +1876,7 @@ def dealwithline(line):
 
     # 证券
 
-    line = re.sub(ur"(?P<stream213>申购.*[\d\.]+)", labeling(214).match_digitnumber, line.strip())
+    line = re.sub(ur"(?P<stream214>申购.*[\d\.]+)", labeling(214).match_digitnumber, line.strip())
 
     """
     author: xiaoxingxing
